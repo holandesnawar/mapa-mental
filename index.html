@@ -213,10 +213,11 @@ const COLORS = [
   { name:"Teal",   border:"#0d9488", bg:"#e3f6f4", text:"#075650" },
 ];
 
+// uid debe estar disponible antes de load() (un visitante nuevo lo usa al crear su primer mapa)
+function uid() { return Math.random().toString(36).slice(2, 9); }
 let state = load();
 let view = { tx: 0, ty: 0, s: 1 };
 let selectedId = null;
-let uid = () => Math.random().toString(36).slice(2, 9);
 
 // ---------- persistence ----------
 function load() {
