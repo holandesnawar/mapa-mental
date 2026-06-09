@@ -65,17 +65,16 @@
   #edges { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
 
   .node {
-    position: absolute; min-width: 92px; max-width: 240px; padding: 10px 14px;
+    position: absolute; min-width: 92px; max-width: 240px; padding: 11px 15px;
     border-radius: 10px; background: #1a1a1e; border: 1px solid #2e2e34;
-    border-bottom: 3px solid #3a3a42; color: #e7e7ea;
+    color: #f0f0f3;
     box-shadow: 0 2px 10px rgba(0,0,0,0.45); font-size: 13px; line-height: 1.38;
-    cursor: pointer; user-select: none; transition: box-shadow .12s, border-color .12s;
+    cursor: pointer; user-select: none; transition: box-shadow .12s, filter .12s;
     touch-action: none;
   }
-  .node:hover { border-top-color: #3d3d45; border-left-color: #3d3d45; border-right-color: #3d3d45;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
-  .node.selected { box-shadow: 0 0 0 2px rgba(99,102,241,.6), 0 6px 18px rgba(0,0,0,.6); }
-  .node.central { font-weight: 700; font-size: 15px; padding: 13px 18px; background: #202027; }
+  .node:hover { filter: brightness(1.12); box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
+  .node.selected { box-shadow: 0 0 0 2px rgba(99,102,241,.75), 0 6px 18px rgba(0,0,0,.6); }
+  .node.central { font-weight: 700; font-size: 15px; padding: 14px 19px; }
   .node .label { outline: none; word-wrap: break-word; white-space: pre-wrap; }
   .node .label[contenteditable="true"] { cursor: text; }
   .node .note-badge { display: block; font-size: 11px; color: #8a8a92; margin-top: 5px;
@@ -266,18 +265,27 @@
 
 <script>
 const STORE_KEY = "mindmaps_v2";
-// Acentos sobrios para modo oscuro. El primero (Neutro) casi no se ve: ramas "sin color".
+// Colores suaves de tarjeta COMPLETA para modo oscuro (tinte tenue + borde a juego).
+// El índice 0 (Neutro) es para la raíz. Las familias usan del 1 en adelante.
 const COLORS = [
-  { name:"Neutro", accent:"#3a3a42" },
-  { name:"Morado", accent:"#a78bfa" },
-  { name:"Rosa",   accent:"#f472b6" },
-  { name:"Teal",   accent:"#2dd4bf" },
-  { name:"Azul",   accent:"#60a5fa" },
-  { name:"Verde",  accent:"#4ade80" },
-  { name:"Ámbar",  accent:"#fbbf24" },
-  { name:"Rojo",   accent:"#fb7185" },
+  { name:"Neutro", bg:"#1b1b20", bd:"#34343c" },
+  { name:"Morado", bg:"#2b2348", bd:"#4d3f7a" },
+  { name:"Azul",   bg:"#16294a", bd:"#33507f" },
+  { name:"Teal",   bg:"#103230", bd:"#235a54" },
+  { name:"Verde",  bg:"#163525", bd:"#2c5e40" },
+  { name:"Rosa",   bg:"#3a1f33", bd:"#6e3a5c" },
+  { name:"Rojo",   bg:"#3a1d22", bd:"#6e3940" },
+  { name:"Ámbar",  bg:"#332611", bd:"#5f4824" },
 ];
 const EDGE_COLOR = "rgba(255,255,255,0.16)"; // conexiones finas y tenues
+// Color de "familia" aleatorio para cada rama principal (evita repetir si puede)
+function randomFamilyColor() {
+  const used = new Set(activeMap().root.children.map(c => c.color));
+  const free = [];
+  for (let i = 1; i < COLORS.length; i++) if (!used.has(i)) free.push(i);
+  const pool = free.length ? free : Array.from({ length: COLORS.length - 1 }, (_, i) => i + 1);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 const H_GAP = 64;   // separación horizontal entre niveles
 const V_GAP = 18;   // separación vertical entre ramas
 
@@ -473,7 +481,11 @@ function renderMap() {
 
   renderEdges();
   emptyState.style.display = "none";
-  updatePanel();
+  // si el panel de opciones está abierto, lo refrescamos para el nodo seleccionado
+  if (panel.classList.contains("show")) {
+    const n = selectedId ? findNode(selectedId) : null;
+    if (n) populatePanel(n); else deselect();
+  }
 }
 
 function createNodeEl(node) {
@@ -481,7 +493,7 @@ function createNodeEl(node) {
   const c = COLORS[node.color || 0];
   const el = document.createElement("div");
   el.className = "node" + (node === map.root ? " central" : "") + (node.id === selectedId ? " selected" : "");
-  el.style.borderBottomColor = c.accent; // único toque de color: una línea de acento abajo
+  el.style.background = c.bg; el.style.borderColor = c.bd; // color suave en toda la tarjeta
   el.dataset.id = node.id;
 
   const label = document.createElement("div");
@@ -516,24 +528,60 @@ function createNodeEl(node) {
   add.addEventListener("click", e => { e.stopPropagation(); addChild(node); });
   el.appendChild(add);
 
-  // seleccionar / doble-toque para editar
-  el.addEventListener("pointerdown", (e) => {
-    if (e.target.classList.contains("toggle") || e.target.classList.contains("add")) return;
-    if (label.getAttribute("contenteditable") === "true") return;
-    e.stopPropagation();
-    selectNode(node.id);
-    if (e.pointerType === "touch") {
-      const now = Date.now();
-      if (lastTapId === node.id && now - lastTapTime < 320) { lastTapTime = 0; startEdit(label, node); }
-      else { lastTapId = node.id; lastTapTime = now; }
-    }
-  });
-  label.addEventListener("dblclick", (e) => { e.stopPropagation(); startEdit(label, node); });
+  attachNodeGestures(el, node, label);
 
   world.appendChild(el);
   nodeEls[node.id] = el;
 }
 let lastTapId = null, lastTapTime = 0;
+
+// Gestos de tarjeta:
+//  · 1 toque corto  -> seleccionar y, si está plegada, abrir sus ramas
+//  · doble toque    -> editar el nombre en línea (sin popup)
+//  · mantener pulsado / clic derecho -> opciones (color, nota, borrar)
+//  · arrastrar      -> mover el mapa (paneo)
+function attachNodeGestures(el, node, label) {
+  let sx, sy, moved, longFired, panSnap, lp;
+  el.addEventListener("pointerdown", (e) => {
+    if (e.target.classList.contains("toggle") || e.target.classList.contains("add")) return;
+    if (label.getAttribute("contenteditable") === "true") return;
+    if (e.button && e.button !== 0) return;
+    e.stopPropagation();
+    try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    sx = e.clientX; sy = e.clientY; moved = false; longFired = false;
+    panSnap = { x: e.clientX - view.tx, y: e.clientY - view.ty };
+    selectNode(node.id); // resalta, sin abrir panel
+    lp = setTimeout(() => { if (!moved) { longFired = true; openOptions(node); } }, 480);
+    const move = (ev) => {
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!moved && Math.abs(dx) + Math.abs(dy) > 6) { moved = true; clearTimeout(lp); canvas.classList.add("panning"); }
+      if (moved) { view.tx = ev.clientX - panSnap.x; view.ty = ev.clientY - panSnap.y; applyView(); }
+    };
+    const up = () => {
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      el.removeEventListener("pointercancel", up);
+      clearTimeout(lp);
+      canvas.classList.remove("panning");
+      if (longFired || moved) return; // fue opciones o paneo, no un toque
+      const now = Date.now();
+      if (lastTapId === node.id && now - lastTapTime < 320) { // doble toque -> renombrar
+        lastTapId = null; lastTapTime = 0; startEditById(node.id);
+      } else { // toque simple -> abrir ramas si están plegadas
+        lastTapId = node.id; lastTapTime = now;
+        if (node.children.length && node.collapsed) { node.collapsed = false; save(); renderMap(); selectNode(node.id); }
+      }
+    };
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+  });
+  el.addEventListener("contextmenu", (e) => { e.preventDefault(); openOptions(node); });
+}
+function startEditById(id) {
+  const el = nodeEls[id]; const node = findNode(id);
+  if (el && node) startEdit(el.querySelector(".label"), node);
+}
 
 function renderEdges() {
   let html = "";
@@ -575,7 +623,7 @@ function startEdit(label, node) {
 function selectNode(id) {
   selectedId = id;
   Object.entries(nodeEls).forEach(([nid, el]) => el.classList.toggle("selected", nid === id));
-  updatePanel();
+  if (panel.classList.contains("show")) { const n = findNode(id); if (n) populatePanel(n); }
 }
 function deselect() {
   selectedId = null;
@@ -583,11 +631,14 @@ function deselect() {
   panel.classList.remove("show");
   fab.classList.remove("hidden");
 }
-function updatePanel() {
-  const n = selectedId ? findNode(selectedId) : null;
-  fab.classList.toggle("hidden", !!n); // el FAB estorba con el panel abierto
-  if (!n) { panel.classList.remove("show"); return; }
+// Abre el panel de opciones (color / nota / borrar) — sólo bajo demanda
+function openOptions(node) {
+  selectNode(node.id);
+  populatePanel(node);
   panel.classList.add("show");
+  fab.classList.add("hidden");
+}
+function populatePanel(n) {
   noteInput.value = n.note || "";
   const isRoot = !parentOf(n.id);
   document.getElementById("deleteNode").disabled = isRoot;
@@ -596,8 +647,8 @@ function updatePanel() {
   COLORS.forEach((c, i) => {
     const s = document.createElement("div");
     s.className = "swatch" + (i === (n.color || 0) ? " sel" : "");
-    s.style.background = (i === 0 ? "#5a5a64" : c.accent); s.title = c.name;
-    s.addEventListener("click", () => { n.color = i; save(); renderMap(); selectNode(n.id); });
+    s.style.background = c.bd; s.title = c.name;
+    s.addEventListener("click", () => { n.color = i; save(); renderMap(); populatePanel(n); });
     swatches.appendChild(s);
   });
 }
@@ -610,20 +661,25 @@ noteInput.addEventListener("blur", () => renderMap());
 // ---------- crear / borrar ramas ----------
 function addChild(parentNode) {
   if (!parentNode) parentNode = activeMap().root;
-  const child = newNode("Nueva idea", parentNode.color || 0); // hereda el acento del padre (neutro por defecto)
+  // rama directa de la raíz = nueva familia (color aleatorio); si no, hereda el de su familia
+  const isRootParent = !parentOf(parentNode.id);
+  const color = isRootParent ? randomFamilyColor() : (parentNode.color || 0);
+  const child = newNode("Nueva idea", color);
   parentNode.children.push(child);
   parentNode.collapsed = false;
   save(); renderMap(); selectNode(child.id); centerOn(child.id);
-  setTimeout(() => { const el = nodeEls[child.id]; if (el) startEdit(el.querySelector(".label"), child); }, 30);
+  setTimeout(() => startEditById(child.id), 30);
 }
 function addSibling(node) {
   const parent = parentOf(node.id);
   if (!parent) { addChild(node); return; } // la raíz no tiene hermana -> crea hija
-  const sib = newNode("Nueva idea", node.color);
+  const isTopLevel = !parentOf(parent.id); // si el padre es la raíz, cada hermana es su propia familia
+  const color = isTopLevel ? randomFamilyColor() : (node.color || 0);
+  const sib = newNode("Nueva idea", color);
   const idx = parent.children.indexOf(node);
   parent.children.splice(idx + 1, 0, sib);
   save(); renderMap(); selectNode(sib.id); centerOn(sib.id);
-  setTimeout(() => { const el = nodeEls[sib.id]; if (el) startEdit(el.querySelector(".label"), sib); }, 30);
+  setTimeout(() => startEditById(sib.id), 30);
 }
 function deleteSelected() {
   if (!selectedId) return;
@@ -827,11 +883,8 @@ document.getElementById("exportPng").addEventListener("click", () => {
   visibleNodes.forEach(n => {
     const p = pos[n.id], c = COLORS[n.color || 0];
     roundRect(ctx, ox(p.x), oy(p.y), p.w, p.h, 10);
-    ctx.fillStyle = (n === map.root ? "#202027" : "#1a1a1e"); ctx.fill();
-    ctx.strokeStyle = "#2e2e34"; ctx.lineWidth = 1; ctx.stroke();
-    // línea de acento inferior
-    ctx.strokeStyle = c.accent; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(ox(p.x) + 2, oy(p.y) + p.h - 1.5); ctx.lineTo(ox(p.x) + p.w - 2, oy(p.y) + p.h - 1.5); ctx.stroke();
+    ctx.fillStyle = c.bg; ctx.fill();
+    ctx.strokeStyle = c.bd; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = "#e7e7ea";
     ctx.font = (n === map.root ? "bold 15px " : "13px ") + "-apple-system,Segoe UI,Roboto,sans-serif";
     ctx.textBaseline = "top";
@@ -886,7 +939,7 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
 renderSidebar();
 renderMap();
 centerView();
-showHint("Selecciona una idea y pulsa el «+» o Tab para crear una rama hija · Enter = hermana · doble clic para editar");
+showHint("Toca una idea para abrir sus ramas · doble toque para renombrar · mantén pulsado para opciones · «+» para añadir rama");
 </script>
 </body>
 </html>
