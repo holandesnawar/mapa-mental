@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Mapas Mentales</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f5f6f8; color: #1c1d21; overflow: hidden;
+  }
+  #app { display: flex; height: 100vh; width: 100vw; }
+
+  /* Sidebar */
+  #sidebar {
+    width: 230px; min-width: 230px; background: #ffffff; border-right: 1px solid #e4e6eb;
+    display: flex; flex-direction: column; height: 100%;
+  }
+  #sidebar h1 { font-size: 15px; padding: 16px 16px 8px; color: #1c1d21; font-weight: 700; }
+  #sidebar .sub { font-size: 11px; color: #8a8d96; padding: 0 16px 12px; }
+  #mapList { flex: 1; overflow-y: auto; padding: 4px 8px; }
+  .map-item {
+    display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; color: #3a3c44; margin-bottom: 2px;
+  }
+  .map-item:hover { background: #f0f1f4; }
+  .map-item.active { background: #e8eefc; color: #1652d6; font-weight: 600; }
+  .map-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .map-item .del { opacity: 0; font-size: 14px; color: #b0b3bc; padding: 0 4px; }
+  .map-item:hover .del { opacity: 1; }
+  .map-item .del:hover { color: #e0455e; }
+  #newMapBtn {
+    margin: 8px 12px 16px; padding: 10px; border: 1px dashed #c4c7d0; background: #fff;
+    border-radius: 8px; cursor: pointer; font-size: 13px; color: #3a3c44; font-weight: 500;
+  }
+  #newMapBtn:hover { border-color: #1652d6; color: #1652d6; }
+
+  /* Main */
+  #main { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; }
+  #toolbar {
+    display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #fff;
+    border-bottom: 1px solid #e4e6eb; flex-wrap: wrap;
+  }
+  #toolbar .title { font-size: 14px; font-weight: 600; margin-right: auto; color: #1c1d21; }
+  .btn {
+    border: 1px solid #d7d9e0; background: #fff; border-radius: 7px; padding: 7px 12px;
+    font-size: 13px; cursor: pointer; color: #3a3c44; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn:hover { background: #f0f1f4; }
+  .btn.primary { background: #1652d6; color: #fff; border-color: #1652d6; }
+  .btn.primary:hover { background: #1145bb; }
+
+  /* Canvas */
+  #canvas { flex: 1; position: relative; overflow: hidden; cursor: grab; background:
+    radial-gradient(#e4e6eb 1px, transparent 1px); background-size: 22px 22px; }
+  #canvas.panning { cursor: grabbing; }
+  #world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  #edges { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+
+  .node {
+    position: absolute; min-width: 90px; max-width: 220px; padding: 10px 14px;
+    border-radius: 12px; background: #fff; border: 2px solid #d7d9e0;
+    box-shadow: 0 2px 8px rgba(20,30,60,0.08); font-size: 13px; line-height: 1.35;
+    cursor: grab; user-select: none; transition: box-shadow .12s;
+  }
+  .node:hover { box-shadow: 0 4px 14px rgba(20,30,60,0.16); }
+  .node.selected { box-shadow: 0 0 0 3px rgba(22,82,214,0.35), 0 4px 14px rgba(20,30,60,0.16); }
+  .node.central { font-weight: 700; font-size: 15px; padding: 14px 20px; }
+  .node .label { outline: none; word-wrap: break-word; white-space: pre-wrap; }
+  .node .label[contenteditable="true"] { cursor: text; }
+  .node .note-badge { display: block; font-size: 11px; color: #8a8d96; margin-top: 5px;
+    border-top: 1px dashed currentColor; padding-top: 5px; opacity: .8; white-space: pre-wrap; }
+  .node .handle {
+    position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #1652d6;
+    border: 2px solid #fff; right: -8px; top: 50%; transform: translateY(-50%);
+    cursor: crosshair; opacity: 0; transition: opacity .12s;
+  }
+  .node:hover .handle, .node.selected .handle { opacity: 1; }
+
+  /* Inspector panel */
+  #panel {
+    position: absolute; right: 16px; top: 70px; width: 250px; background: #fff;
+    border: 1px solid #e4e6eb; border-radius: 12px; box-shadow: 0 8px 30px rgba(20,30,60,0.16);
+    padding: 14px; display: none; z-index: 20;
+  }
+  #panel.show { display: block; }
+  #panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #8a8d96; margin-bottom: 8px; }
+  #panel label { font-size: 12px; color: #6a6d76; display: block; margin: 12px 0 5px; }
+  #panel textarea {
+    width: 100%; min-height: 70px; border: 1px solid #d7d9e0; border-radius: 8px; padding: 8px;
+    font-size: 13px; font-family: inherit; resize: vertical;
+  }
+  .swatches { display: flex; gap: 7px; flex-wrap: wrap; }
+  .swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #d7d9e0; }
+  .swatch.sel { box-shadow: 0 0 0 2px #1c1d21; }
+  #panel .row { display: flex; gap: 8px; margin-top: 14px; }
+  #deleteNode { color: #e0455e; border-color: #f0c3cb; flex: 1; }
+  #deleteNode:hover { background: #fdeef1; }
+
+  /* Modal */
+  #modalBg { position: fixed; inset: 0; background: rgba(20,25,40,.35); display: none;
+    align-items: center; justify-content: center; z-index: 100; }
+  #modalBg.show { display: flex; }
+  #modal { background: #fff; border-radius: 14px; padding: 22px; width: 320px;
+    box-shadow: 0 20px 60px rgba(20,30,60,.3); }
+  #modal h3 { font-size: 15px; margin-bottom: 14px; color: #1c1d21; }
+  #modal input { width: 100%; border: 1px solid #d7d9e0; border-radius: 8px; padding: 10px;
+    font-size: 14px; font-family: inherit; margin-bottom: 16px; }
+  #modal input:focus { outline: none; border-color: #1652d6; }
+  #modal .actions { display: flex; gap: 8px; justify-content: flex-end; }
+  #modalMsg { font-size: 13px; color: #6a6d76; margin-bottom: 16px; line-height: 1.4; }
+
+  #hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(28,29,33,.85); color: #fff; font-size: 12px; padding: 7px 14px;
+    border-radius: 20px; pointer-events: none; opacity: 0; transition: opacity .3s; }
+  #hint.show { opacity: 1; }
+  #zoomctl { position: absolute; bottom: 14px; right: 16px; display: flex; gap: 6px; }
+  #zoomctl .btn { padding: 6px 10px; }
+  .empty-state { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    text-align: center; color: #a0a3ac; font-size: 14px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>🧠 Mis Mapas Mentales</h1>
+    <div class="sub">Organiza el orden de todo en tu cabeza</div>
+    <div id="mapList"></div>
+    <button id="newMapBtn">+ Nuevo mapa</button>
+  </aside>
+
+  <div id="main">
+    <div id="toolbar">
+      <span class="title" id="mapTitle"></span>
+      <button class="btn primary" id="addNode">+ Idea</button>
+      <button class="btn" id="arrange">✦ Ordenar radial</button>
+      <button class="btn" id="exportPng">⤓ PNG</button>
+      <button class="btn" id="exportJson">⤓ JSON</button>
+      <button class="btn" id="importJson">⤒ Importar</button>
+      <input type="file" id="fileInput" accept="application/json" style="display:none">
+    </div>
+
+    <div id="canvas">
+      <div id="world">
+        <svg id="edges"></svg>
+      </div>
+      <div class="empty-state" id="emptyState"></div>
+      <div id="hint"></div>
+      <div id="zoomctl">
+        <button class="btn" id="zoomOut">−</button>
+        <button class="btn" id="zoomReset">100%</button>
+        <button class="btn" id="zoomIn">+</button>
+      </div>
+    </div>
+
+    <div id="panel">
+      <h3>Editar idea</h3>
+      <label>Color del tema</label>
+      <div class="swatches" id="swatches"></div>
+      <label>Nota (texto largo)</label>
+      <textarea id="noteInput" placeholder="Detalles, ideas, recordatorios..."></textarea>
+      <div class="row">
+        <button class="btn" id="deleteNode">🗑 Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modalBg">
+  <div id="modal">
+    <h3 id="modalTitle"></h3>
+    <div id="modalMsg" style="display:none"></div>
+    <input id="modalInput" type="text">
+    <div class="actions">
+      <button class="btn" id="modalCancel">Cancelar</button>
+      <button class="btn primary" id="modalOk">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE_KEY = "mindmaps_v1";
+const COLORS = [
+  { name:"Azul",   border:"#1652d6", bg:"#eaf0fd", text:"#13316e" },
+  { name:"Verde",  border:"#1f9d57", bg:"#e8f7ee", text:"#0e5e33" },
+  { name:"Morado", border:"#7c3aed", bg:"#f1ebfd", text:"#4a1d99" },
+  { name:"Naranja",border:"#e08c1a", bg:"#fdf2e0", text:"#8a530a" },
+  { name:"Rosa",   border:"#db2f78", bg:"#fdeaf2", text:"#8c1748" },
+  { name:"Gris",   border:"#6a6d76", bg:"#f0f1f4", text:"#33353c" },
+  { name:"Rojo",   border:"#e0455e", bg:"#fdebee", text:"#8c2233" },
+  { name:"Teal",   border:"#0d9488", bg:"#e3f6f4", text:"#075650" },
+];
+
+let state = load();
+let view = { tx: 0, ty: 0, s: 1 };
+let selectedId = null;
+let uid = () => Math.random().toString(36).slice(2, 9);
+
+// ---------- persistence ----------
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e){}
+  const id = "m_" + uid();
+  const cid = uid();
+  return {
+    activeMapId: id,
+    maps: [{
+      id, name: "Mi primer mapa",
+      nodes: [{ id: cid, x: 500, y: 360, text: "Idea central", note: "", color: 0, central: true }],
+      edges: []
+    }]
+  };
+}
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
+}
+function activeMap() { return state.maps.find(m => m.id === state.activeMapId) || state.maps[0]; }
+
+// ---------- DOM refs ----------
+const canvas = document.getElementById("canvas");
+const world = document.getElementById("world");
+const edgesSvg = document.getElementById("edges");
+const mapList = document.getElementById("mapList");
+const panel = document.getElementById("panel");
+const noteInput = document.getElementById("noteInput");
+const swatches = document.getElementById("swatches");
+const emptyState = document.getElementById("emptyState");
+let nodeEls = {}; // id -> element
+
+// ---------- modal helpers (prompt/confirm replacements) ----------
+const modalBg = document.getElementById("modalBg");
+const modalInput = document.getElementById("modalInput");
+const modalMsg = document.getElementById("modalMsg");
+let modalResolve = null;
+function askText(title, value) {
+  return new Promise(res => {
+    document.getElementById("modalTitle").textContent = title;
+    modalMsg.style.display = "none";
+    modalInput.style.display = "block";
+    modalInput.value = value || "";
+    modalBg.classList.add("show");
+    setTimeout(() => { modalInput.focus(); modalInput.select(); }, 30);
+    modalResolve = res;
+  });
+}
+function askConfirm(title, msg) {
+  return new Promise(res => {
+    document.getElementById("modalTitle").textContent = title;
+    modalMsg.textContent = msg || "";
+    modalMsg.style.display = msg ? "block" : "none";
+    modalInput.style.display = "none";
+    modalBg.classList.add("show");
+    modalResolve = res;
+  });
+}
+function closeModal(val) { modalBg.classList.remove("show"); if (modalResolve) { modalResolve(val); modalResolve = null; } }
+document.getElementById("modalOk").addEventListener("click", () => {
+  closeModal(modalInput.style.display === "none" ? true : modalInput.value);
+});
+document.getElementById("modalCancel").addEventListener("click", () => closeModal(null));
+modalInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") closeModal(modalInput.value);
+  if (e.key === "Escape") closeModal(null);
+});
+modalBg.addEventListener("mousedown", (e) => { if (e.target === modalBg) closeModal(null); });
+
+// ---------- view transform ----------
+function applyView() {
+  world.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`;
+  document.getElementById("zoomReset").textContent = Math.round(view.s * 100) + "%";
+}
+function screenToWorld(sx, sy) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (sx - r.left - view.tx) / view.s, y: (sy - r.top - view.ty) / view.s };
+}
+
+// ---------- rendering ----------
+function renderSidebar() {
+  mapList.innerHTML = "";
+  state.maps.forEach(m => {
+    const el = document.createElement("div");
+    el.className = "map-item" + (m.id === state.activeMapId ? " active" : "");
+    el.innerHTML = `<span>🗺</span><span class="name"></span><span class="del" title="Eliminar">✕</span>`;
+    el.querySelector(".name").textContent = m.name;
+    el.querySelector(".name").addEventListener("click", () => { switchMap(m.id); });
+    el.querySelector("span:first-child").addEventListener("click", () => switchMap(m.id));
+    el.querySelector(".del").addEventListener("click", (e) => { e.stopPropagation(); deleteMap(m.id); });
+    el.addEventListener("dblclick", (e) => {
+      if (e.target.classList.contains("del")) return;
+      renameMap(m.id);
+    });
+    mapList.appendChild(el);
+  });
+}
+
+function renderMap() {
+  const map = activeMap();
+  document.getElementById("mapTitle").textContent = map.name;
+  // clear nodes
+  Object.values(nodeEls).forEach(el => el.remove());
+  nodeEls = {};
+  map.nodes.forEach(createNodeEl);
+  renderEdges();
+  emptyState.style.display = map.nodes.length === 0 ? "block" : "none";
+  emptyState.textContent = "Pulsa «+ Idea» o doble clic en el lienzo para empezar";
+  updatePanel();
+}
+
+function createNodeEl(n) {
+  const c = COLORS[n.color || 0];
+  const el = document.createElement("div");
+  el.className = "node" + (n.central ? " central" : "") + (n.id === selectedId ? " selected" : "");
+  el.style.left = n.x + "px";
+  el.style.top = n.y + "px";
+  el.style.borderColor = c.border;
+  el.style.background = c.bg;
+  el.style.color = c.text;
+  el.dataset.id = n.id;
+
+  const label = document.createElement("div");
+  label.className = "label";
+  label.textContent = n.text;
+  el.appendChild(label);
+
+  if (n.note && n.note.trim()) {
+    const nb = document.createElement("div");
+    nb.className = "note-badge";
+    nb.textContent = n.note.length > 80 ? n.note.slice(0,80) + "…" : n.note;
+    el.appendChild(nb);
+  }
+
+  const handle = document.createElement("div");
+  handle.className = "handle";
+  handle.title = "Arrastra para conectar con otra idea";
+  el.appendChild(handle);
+
+  world.appendChild(el);
+  nodeEls[n.id] = el;
+
+  // interactions
+  attachNodeDrag(el, n, label);
+  attachHandle(handle, n);
+  label.addEventListener("dblclick", (e) => { e.stopPropagation(); startEdit(label, n); });
+  el.addEventListener("mousedown", (e) => { e.stopPropagation(); selectNode(n.id); });
+}
+
+function nodeCenter(n) {
+  const el = nodeEls[n.id];
+  if (!el) return { x: n.x, y: n.y };
+  return { x: n.x + el.offsetWidth / 2, y: n.y + el.offsetHeight / 2 };
+}
+
+function renderEdges() {
+  const map = activeMap();
+  let html = "";
+  map.edges.forEach(e => {
+    const a = map.nodes.find(n => n.id === e.from);
+    const b = map.nodes.find(n => n.id === e.to);
+    if (!a || !b) return;
+    const ca = nodeCenter(a), cb = nodeCenter(b);
+    const col = COLORS[a.color || 0].border;
+    html += `<path d="M ${ca.x} ${ca.y} C ${(ca.x+cb.x)/2} ${ca.y}, ${(ca.x+cb.x)/2} ${cb.y}, ${cb.x} ${cb.y}" stroke="${col}" stroke-width="2.5" fill="none" opacity="0.55"/>`;
+  });
+  edgesSvg.innerHTML = html + (edgesSvg.dataset.temp || "");
+}
+
+// ---------- node dragging ----------
+function attachNodeDrag(el, n, label) {
+  let sx, sy, ox, oy, moved;
+  el.addEventListener("mousedown", (e) => {
+    if (e.target.classList.contains("handle")) return;
+    if (label.getAttribute("contenteditable") === "true") return;
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    sx = e.clientX; sy = e.clientY; ox = n.x; oy = n.y; moved = false;
+    el.style.cursor = "grabbing";
+    const move = (ev) => {
+      const dx = (ev.clientX - sx) / view.s;
+      const dy = (ev.clientY - sy) / view.s;
+      if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+      n.x = ox + dx; n.y = oy + dy;
+      el.style.left = n.x + "px"; el.style.top = n.y + "px";
+      renderEdges();
+    };
+    const up = () => {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+      el.style.cursor = "grab";
+      if (moved) save();
+    };
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  });
+}
+
+// ---------- connecting nodes ----------
+function attachHandle(handle, n) {
+  handle.addEventListener("mousedown", (e) => {
+    e.stopPropagation(); e.preventDefault();
+    const start = nodeCenter(n);
+    const move = (ev) => {
+      const w = screenToWorld(ev.clientX, ev.clientY);
+      edgesSvg.dataset.temp = `<path d="M ${start.x} ${start.y} L ${w.x} ${w.y}" stroke="#1652d6" stroke-width="2.5" stroke-dasharray="6 5" fill="none"/>`;
+      renderEdges();
+    };
+    const up = (ev) => {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+      edgesSvg.dataset.temp = "";
+      const target = ev.target.closest(".node");
+      if (target && target.dataset.id !== n.id) {
+        const map = activeMap();
+        const tid = target.dataset.id;
+        const exists = map.edges.some(ed =>
+          (ed.from === n.id && ed.to === tid) || (ed.from === tid && ed.to === n.id));
+        if (!exists) { map.edges.push({ from: n.id, to: tid }); save(); }
+      }
+      renderEdges();
+    };
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  });
+}
+
+// ---------- editing text ----------
+function startEdit(label, n) {
+  label.setAttribute("contenteditable", "true");
+  label.focus();
+  const range = document.createRange();
+  range.selectNodeContents(label);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(range);
+  const finish = () => {
+    label.removeAttribute("contenteditable");
+    n.text = label.textContent.trim() || "Idea";
+    label.textContent = n.text;
+    save(); renderEdges();
+    label.removeEventListener("blur", finish);
+    label.removeEventListener("keydown", key);
+  };
+  const key = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); label.blur(); }
+    if (e.key === "Escape") { label.textContent = n.text; label.blur(); }
+  };
+  label.addEventListener("blur", finish);
+  label.addEventListener("keydown", key);
+}
+
+// ---------- selection / panel ----------
+function selectNode(id) {
+  selectedId = id;
+  Object.entries(nodeEls).forEach(([nid, el]) => el.classList.toggle("selected", nid === id));
+  updatePanel();
+}
+function deselect() {
+  selectedId = null;
+  Object.values(nodeEls).forEach(el => el.classList.remove("selected"));
+  panel.classList.remove("show");
+}
+function updatePanel() {
+  const map = activeMap();
+  const n = map.nodes.find(x => x.id === selectedId);
+  if (!n) { panel.classList.remove("show"); return; }
+  panel.classList.add("show");
+  noteInput.value = n.note || "";
+  swatches.innerHTML = "";
+  COLORS.forEach((c, i) => {
+    const s = document.createElement("div");
+    s.className = "swatch" + (i === (n.color||0) ? " sel" : "");
+    s.style.background = c.border;
+    s.title = c.name;
+    s.addEventListener("click", () => {
+      n.color = i; save(); renderMap(); selectNode(n.id);
+    });
+    swatches.appendChild(s);
+  });
+}
+noteInput.addEventListener("input", () => {
+  const map = activeMap();
+  const n = map.nodes.find(x => x.id === selectedId);
+  if (n) { n.note = noteInput.value; save(); }
+});
+noteInput.addEventListener("blur", () => renderMap());
+document.getElementById("deleteNode").addEventListener("click", () => {
+  const map = activeMap();
+  if (!selectedId) return;
+  map.nodes = map.nodes.filter(n => n.id !== selectedId);
+  map.edges = map.edges.filter(e => e.from !== selectedId && e.to !== selectedId);
+  deselect(); save(); renderMap();
+});
+
+// ---------- add node ----------
+function addNode(wx, wy) {
+  const map = activeMap();
+  const center = screenToWorld(canvas.getBoundingClientRect().left + canvas.clientWidth/2,
+                               canvas.getBoundingClientRect().top + canvas.clientHeight/2);
+  const n = {
+    id: uid(),
+    x: wx != null ? wx : center.x - 50,
+    y: wy != null ? wy : center.y - 20,
+    text: "Nueva idea", note: "", color: (map.nodes.length % COLORS.length)
+  };
+  // auto-connect to selected node, else to central
+  let parent = map.nodes.find(x => x.id === selectedId);
+  if (!parent) parent = map.nodes.find(x => x.central);
+  map.nodes.push(n);
+  if (parent && parent.id !== n.id) map.edges.push({ from: parent.id, to: n.id });
+  save(); renderMap(); selectNode(n.id);
+  // immediately edit
+  setTimeout(() => { const el = nodeEls[n.id]; if (el) startEdit(el.querySelector(".label"), n); }, 30);
+}
+document.getElementById("addNode").addEventListener("click", () => addNode());
+
+// ---------- radial arrange ----------
+document.getElementById("arrange").addEventListener("click", () => {
+  const map = activeMap();
+  const central = map.nodes.find(n => n.central) || map.nodes[0];
+  if (!central) return;
+  const children = map.nodes.filter(n => n.id !== central.id);
+  const R = Math.max(220, children.length * 28);
+  central.x = 500; central.y = 360;
+  children.forEach((n, i) => {
+    const ang = (i / children.length) * Math.PI * 2 - Math.PI/2;
+    n.x = 500 + Math.cos(ang) * R;
+    n.y = 360 + Math.sin(ang) * R;
+  });
+  save(); renderMap();
+  view = { tx: canvas.clientWidth/2 - 500, ty: canvas.clientHeight/2 - 360, s: 0.85 };
+  applyView();
+  showHint("Ideas ordenadas radialmente");
+});
+
+// ---------- maps management ----------
+function switchMap(id) {
+  state.activeMapId = id; selectedId = null; save();
+  view = { tx: 0, ty: 0, s: 1 };
+  renderSidebar(); applyView(); renderMap();
+  centerView();
+}
+async function deleteMap(id) {
+  if (state.maps.length === 1) { showHint("Debe quedar al menos un mapa"); return; }
+  const ok = await askConfirm("Eliminar mapa", "¿Seguro que quieres eliminar este mapa? No se puede deshacer.");
+  if (!ok) return;
+  state.maps = state.maps.filter(m => m.id !== id);
+  if (state.activeMapId === id) state.activeMapId = state.maps[0].id;
+  save(); renderSidebar(); renderMap();
+}
+async function renameMap(id) {
+  const m = state.maps.find(x => x.id === id);
+  const name = await askText("Nombre del mapa", m.name);
+  if (name && name.trim()) { m.name = name.trim(); save(); renderSidebar(); document.getElementById("mapTitle").textContent = m.name; }
+}
+document.getElementById("newMapBtn").addEventListener("click", async () => {
+  const name = await askText("Nuevo mapa", "Mapa " + (state.maps.length + 1));
+  if (name === null) return;
+  const id = "m_" + uid();
+  state.maps.push({
+    id, name: (name && name.trim()) || ("Mapa " + (state.maps.length + 1)),
+    nodes: [{ id: uid(), x: 500, y: 360, text: "Idea central", note: "", color: 0, central: true }],
+    edges: []
+  });
+  switchMap(id);
+});
+
+// ---------- pan & zoom ----------
+let panning = false, panStart;
+canvas.addEventListener("mousedown", (e) => {
+  if (e.target.closest(".node") || e.target.closest("#panel") || e.target.closest("#zoomctl")) return;
+  if (e.button !== 0) return;
+  deselect();
+  panning = true; canvas.classList.add("panning");
+  panStart = { x: e.clientX - view.tx, y: e.clientY - view.ty };
+});
+document.addEventListener("mousemove", (e) => {
+  if (!panning) return;
+  view.tx = e.clientX - panStart.x; view.ty = e.clientY - panStart.y; applyView();
+});
+document.addEventListener("mouseup", () => { panning = false; canvas.classList.remove("panning"); });
+canvas.addEventListener("dblclick", (e) => {
+  if (e.target.closest(".node")) return;
+  const w = screenToWorld(e.clientX, e.clientY);
+  addNode(w.x - 50, w.y - 20);
+});
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const wx = (mx - view.tx) / view.s, wy = (my - view.ty) / view.s;
+  const factor = e.deltaY < 0 ? 1.12 : 0.89;
+  view.s = Math.min(2.5, Math.max(0.25, view.s * factor));
+  view.tx = mx - wx * view.s; view.ty = my - wy * view.s;
+  applyView();
+}, { passive: false });
+
+function zoomBy(f) {
+  const mx = canvas.clientWidth/2, my = canvas.clientHeight/2;
+  const wx = (mx - view.tx) / view.s, wy = (my - view.ty) / view.s;
+  view.s = Math.min(2.5, Math.max(0.25, view.s * f));
+  view.tx = mx - wx * view.s; view.ty = my - wy * view.s; applyView();
+}
+document.getElementById("zoomIn").addEventListener("click", () => zoomBy(1.15));
+document.getElementById("zoomOut").addEventListener("click", () => zoomBy(0.87));
+document.getElementById("zoomReset").addEventListener("click", () => centerView());
+
+function centerView() {
+  const map = activeMap();
+  if (!map.nodes.length) { view = { tx:0, ty:0, s:1 }; applyView(); return; }
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  map.nodes.forEach(n => { minX=Math.min(minX,n.x); minY=Math.min(minY,n.y);
+    maxX=Math.max(maxX,n.x+180); maxY=Math.max(maxY,n.y+60); });
+  const w = maxX-minX, h = maxY-minY;
+  const s = Math.min(1.2, Math.min(canvas.clientWidth/(w+160), canvas.clientHeight/(h+160)));
+  view.s = Math.max(0.3, s);
+  view.tx = (canvas.clientWidth - w*view.s)/2 - minX*view.s;
+  view.ty = (canvas.clientHeight - h*view.s)/2 - minY*view.s;
+  applyView();
+}
+
+// ---------- keyboard ----------
+document.addEventListener("keydown", (e) => {
+  const editing = document.activeElement &&
+    (document.activeElement.tagName === "TEXTAREA" || document.activeElement.getAttribute("contenteditable") === "true");
+  if (editing) return;
+  if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+    e.preventDefault(); document.getElementById("deleteNode").click();
+  }
+  if (e.key === "Tab" && selectedId) { e.preventDefault(); addNode(); }
+});
+
+// ---------- hint ----------
+let hintTimer;
+function showHint(text) {
+  const h = document.getElementById("hint");
+  h.textContent = text; h.classList.add("show");
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => h.classList.remove("show"), 2200);
+}
+
+// ---------- export PNG ----------
+document.getElementById("exportPng").addEventListener("click", () => {
+  const map = activeMap();
+  if (!map.nodes.length) return;
+  // measure
+  const pad = 60;
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  const sizes = {};
+  map.nodes.forEach(n => {
+    const el = nodeEls[n.id];
+    const w = el ? el.offsetWidth : 120, h = el ? el.offsetHeight : 50;
+    sizes[n.id] = { w, h };
+    minX=Math.min(minX,n.x); minY=Math.min(minY,n.y);
+    maxX=Math.max(maxX,n.x+w); maxY=Math.max(maxY,n.y+h);
+  });
+  const W = (maxX-minX)+pad*2, H = (maxY-minY)+pad*2;
+  const scale = 2;
+  const cv = document.createElement("canvas");
+  cv.width = W*scale; cv.height = H*scale;
+  const ctx = cv.getContext("2d");
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,W,H);
+  const off = (n) => ({ x: n.x - minX + pad, y: n.y - minY + pad });
+  // edges
+  map.edges.forEach(e => {
+    const a = map.nodes.find(n=>n.id===e.from), b = map.nodes.find(n=>n.id===e.to);
+    if (!a||!b) return;
+    const oa=off(a), ob=off(b), sa=sizes[a.id], sb=sizes[b.id];
+    const ax=oa.x+sa.w/2, ay=oa.y+sa.h/2, bx=ob.x+sb.w/2, by=ob.y+sb.h/2;
+    ctx.strokeStyle = COLORS[a.color||0].border; ctx.globalAlpha=0.5; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(ax,ay);
+    ctx.bezierCurveTo((ax+bx)/2,ay,(ax+bx)/2,by,bx,by); ctx.stroke();
+    ctx.globalAlpha=1;
+  });
+  // nodes
+  map.nodes.forEach(n => {
+    const o=off(n), s=sizes[n.id], c=COLORS[n.color||0];
+    roundRect(ctx,o.x,o.y,s.w,s.h,12);
+    ctx.fillStyle=c.bg; ctx.fill();
+    ctx.strokeStyle=c.border; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle=c.text;
+    ctx.font=(n.central?"bold 15px ":"13px ")+"-apple-system,Segoe UI,Roboto,sans-serif";
+    ctx.textBaseline="top";
+    wrapText(ctx, n.text, o.x+14, o.y+12, s.w-28, 18);
+  });
+  const a=document.createElement("a");
+  a.download=(map.name||"mapa")+".png"; a.href=cv.toDataURL("image/png"); a.click();
+  showHint("PNG exportado");
+});
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function wrapText(ctx,text,x,y,maxW,lh){
+  const words=text.split(/\s+/); let line="", yy=y;
+  words.forEach(w=>{ const t=line?line+" "+w:w;
+    if(ctx.measureText(t).width>maxW && line){ ctx.fillText(line,x,yy); line=w; yy+=lh; }
+    else line=t; });
+  if(line) ctx.fillText(line,x,yy);
+}
+
+// ---------- export / import JSON ----------
+document.getElementById("exportJson").addEventListener("click", () => {
+  const map = activeMap();
+  const blob = new Blob([JSON.stringify(map,null,2)], { type:"application/json" });
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=(map.name||"mapa")+".json"; a.click();
+  showHint("JSON exportado");
+});
+document.getElementById("importJson").addEventListener("click", () => document.getElementById("fileInput").click());
+document.getElementById("fileInput").addEventListener("change", (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data.nodes) throw new Error();
+      const id = "m_" + uid();
+      state.maps.push({ id, name: (data.name||"Importado"), nodes: data.nodes, edges: data.edges||[] });
+      switchMap(id); showHint("Mapa importado");
+    } catch(err){ showHint("Archivo no válido"); }
+  };
+  reader.readAsText(f);
+  e.target.value = "";
+});
+
+// ---------- init ----------
+renderSidebar();
+applyView();
+renderMap();
+centerView();
+showHint("Doble clic en el lienzo = nueva idea · Arrastra el punto azul para conectar");
+</script>
+</body>
+</html>
