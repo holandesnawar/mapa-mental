@@ -40,7 +40,7 @@
   #newMapBtn:hover { border-color: #1652d6; color: #1652d6; }
 
   /* Main */
-  #main { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; }
+  #main { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; min-width: 0; }
   #toolbar {
     display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #fff;
     border-bottom: 1px solid #e4e6eb; flex-wrap: wrap;
@@ -49,10 +49,12 @@
   .btn {
     border: 1px solid #d7d9e0; background: #fff; border-radius: 7px; padding: 7px 12px;
     font-size: 13px; cursor: pointer; color: #3a3c44; display: inline-flex; align-items: center; gap: 5px;
+    white-space: nowrap;
   }
   .btn:hover { background: #f0f1f4; }
   .btn.primary { background: #1652d6; color: #fff; border-color: #1652d6; }
   .btn.primary:hover { background: #1145bb; }
+  .btn:disabled { opacity: .45; cursor: default; }
 
   /* Canvas */
   #canvas { flex: 1; position: relative; overflow: hidden; cursor: grab; background:
@@ -63,10 +65,11 @@
   #edges { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
 
   .node {
-    position: absolute; min-width: 90px; max-width: 220px; padding: 10px 14px;
+    position: absolute; min-width: 90px; max-width: 230px; padding: 10px 14px;
     border-radius: 12px; background: #fff; border: 2px solid #d7d9e0;
     box-shadow: 0 2px 8px rgba(20,30,60,0.08); font-size: 13px; line-height: 1.35;
-    cursor: grab; user-select: none; transition: box-shadow .12s; touch-action: none;
+    cursor: pointer; user-select: none; transition: box-shadow .12s, transform .12s;
+    touch-action: none;
   }
   .node:hover { box-shadow: 0 4px 14px rgba(20,30,60,0.16); }
   .node.selected { box-shadow: 0 0 0 3px rgba(22,82,214,0.35), 0 4px 14px rgba(20,30,60,0.16); }
@@ -75,12 +78,25 @@
   .node .label[contenteditable="true"] { cursor: text; }
   .node .note-badge { display: block; font-size: 11px; color: #8a8d96; margin-top: 5px;
     border-top: 1px dashed currentColor; padding-top: 5px; opacity: .8; white-space: pre-wrap; }
-  .node .handle {
-    position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #1652d6;
-    border: 2px solid #fff; right: -10px; top: 50%; transform: translateY(-50%);
-    cursor: crosshair; opacity: 0; transition: opacity .12s; touch-action: none;
+
+  /* Collapse/expand toggle (right side) */
+  .node .toggle {
+    position: absolute; right: -13px; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px; border-radius: 50%; background: #fff;
+    border: 2px solid currentColor; color: inherit; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; font-weight: 700; cursor: pointer; z-index: 2;
   }
-  .node:hover .handle, .node.selected .handle { opacity: 1; }
+  .node .toggle:hover { background: currentColor; }
+  .node .toggle:hover span { color: #fff; }
+  .node .toggle span { color: inherit; line-height: 1; }
+  /* Add-child button */
+  .node .add {
+    position: absolute; right: -12px; bottom: -12px; width: 22px; height: 22px;
+    border-radius: 50%; background: #1652d6; color: #fff; border: 2px solid #fff;
+    display: none; align-items: center; justify-content: center; font-size: 15px;
+    line-height: 1; cursor: pointer; z-index: 3; box-shadow: 0 2px 6px rgba(20,30,60,.25);
+  }
+  .node:hover .add, .node.selected .add { display: flex; }
 
   /* Inspector panel */
   #panel {
@@ -92,22 +108,23 @@
   #panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #8a8d96; margin-bottom: 8px; }
   #panel label { font-size: 12px; color: #6a6d76; display: block; margin: 12px 0 5px; }
   #panel textarea {
-    width: 100%; min-height: 70px; border: 1px solid #d7d9e0; border-radius: 8px; padding: 8px;
+    width: 100%; min-height: 64px; border: 1px solid #d7d9e0; border-radius: 8px; padding: 8px;
     font-size: 13px; font-family: inherit; resize: vertical;
   }
   .swatches { display: flex; gap: 7px; flex-wrap: wrap; }
   .swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid #fff;
     box-shadow: 0 0 0 1px #d7d9e0; }
   .swatch.sel { box-shadow: 0 0 0 2px #1c1d21; }
-  #panel .row { display: flex; gap: 8px; margin-top: 14px; }
-  #deleteNode { color: #e0455e; border-color: #f0c3cb; flex: 1; }
+  #panel .row { display: flex; gap: 8px; margin-top: 12px; }
+  #panel .row .btn { flex: 1; justify-content: center; }
+  #deleteNode { color: #e0455e; border-color: #f0c3cb; }
   #deleteNode:hover { background: #fdeef1; }
 
   /* Modal */
   #modalBg { position: fixed; inset: 0; background: rgba(20,25,40,.35); display: none;
     align-items: center; justify-content: center; z-index: 100; }
   #modalBg.show { display: flex; }
-  #modal { background: #fff; border-radius: 14px; padding: 22px; width: 320px;
+  #modal { background: #fff; border-radius: 14px; padding: 22px; width: 320px; max-width: 90vw;
     box-shadow: 0 20px 60px rgba(20,30,60,.3); }
   #modal h3 { font-size: 15px; margin-bottom: 14px; color: #1c1d21; }
   #modal input { width: 100%; border: 1px solid #d7d9e0; border-radius: 8px; padding: 10px;
@@ -118,7 +135,8 @@
 
   #hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
     background: rgba(28,29,33,.85); color: #fff; font-size: 12px; padding: 7px 14px;
-    border-radius: 20px; pointer-events: none; opacity: 0; transition: opacity .3s; }
+    border-radius: 20px; pointer-events: none; opacity: 0; transition: opacity .3s;
+    max-width: 90%; text-align: center; }
   #hint.show { opacity: 1; }
   #zoomctl { position: absolute; bottom: 14px; right: 16px; display: flex; gap: 6px; }
   #zoomctl .btn { padding: 6px 10px; }
@@ -146,7 +164,7 @@
 <div id="app">
   <aside id="sidebar">
     <h1>🧠 Mis Mapas Mentales</h1>
-    <div class="sub">Organiza el orden de todo en tu cabeza</div>
+    <div class="sub">Una idea raíz y ramas que se despliegan</div>
     <div id="mapList"></div>
     <button id="newMapBtn">+ Nuevo mapa</button>
   </aside>
@@ -154,8 +172,9 @@
   <div id="main">
     <div id="toolbar">
       <span class="title" id="mapTitle"></span>
-      <button class="btn primary" id="addNode">+ Idea</button>
-      <button class="btn" id="arrange">✦ Ordenar radial</button>
+      <button class="btn primary" id="addNode">+ Rama</button>
+      <button class="btn" id="collapseAll">⊟ Plegar</button>
+      <button class="btn" id="expandAll">⊞ Desplegar</button>
       <button class="btn" id="exportPng">⤓ PNG</button>
       <button class="btn" id="exportJson">⤓ JSON</button>
       <button class="btn" id="importJson">⤒ Importar</button>
@@ -177,12 +196,16 @@
 
     <div id="panel">
       <h3>Editar idea</h3>
-      <label>Color del tema</label>
+      <label>Color de la rama</label>
       <div class="swatches" id="swatches"></div>
       <label>Nota (texto largo)</label>
       <textarea id="noteInput" placeholder="Detalles, ideas, recordatorios..."></textarea>
       <div class="row">
-        <button class="btn" id="deleteNode">🗑 Eliminar</button>
+        <button class="btn" id="addChildBtn">➕ Rama hija</button>
+        <button class="btn" id="addSibBtn">↳ Hermana</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="deleteNode">🗑 Eliminar rama</button>
       </div>
     </div>
   </div>
@@ -201,7 +224,7 @@
 </div>
 
 <script>
-const STORE_KEY = "mindmaps_v1";
+const STORE_KEY = "mindmaps_v2";
 const COLORS = [
   { name:"Azul",   border:"#1652d6", bg:"#eaf0fd", text:"#13316e" },
   { name:"Verde",  border:"#1f9d57", bg:"#e8f7ee", text:"#0e5e33" },
@@ -212,34 +235,69 @@ const COLORS = [
   { name:"Rojo",   border:"#e0455e", bg:"#fdebee", text:"#8c2233" },
   { name:"Teal",   border:"#0d9488", bg:"#e3f6f4", text:"#075650" },
 ];
+const H_GAP = 64;   // separación horizontal entre niveles
+const V_GAP = 18;   // separación vertical entre ramas
 
-// uid debe estar disponible antes de load() (un visitante nuevo lo usa al crear su primer mapa)
+// ---- helpers de árbol (declaraciones hoisted: disponibles desde load()) ----
 function uid() { return Math.random().toString(36).slice(2, 9); }
+function newNode(text, color) {
+  return { id: uid(), text: text || "Idea", note: "", color: color || 0, collapsed: false, children: [] };
+}
+function migrateMap(m) {
+  if (m.root) return m; // ya es árbol
+  const nodes = m.nodes || [];
+  if (!nodes.length) return { id: m.id, name: m.name, root: newNode("Idea central") };
+  const byId = {};
+  nodes.forEach(n => byId[n.id] = { id: n.id, text: n.text || "Idea", note: n.note || "",
+    color: n.color || 0, collapsed: false, children: [] });
+  const central = nodes.find(n => n.central) || nodes[0];
+  const adj = {}; nodes.forEach(n => adj[n.id] = []);
+  (m.edges || []).forEach(e => { if (adj[e.from] && adj[e.to]) { adj[e.from].push(e.to); adj[e.to].push(e.from); } });
+  const visited = new Set([central.id]); const queue = [central.id];
+  while (queue.length) {
+    const id = queue.shift();
+    adj[id].forEach(nb => { if (!visited.has(nb)) { visited.add(nb); byId[id].children.push(byId[nb]); queue.push(nb); } });
+  }
+  nodes.forEach(n => { if (!visited.has(n.id)) { byId[central.id].children.push(byId[n.id]); visited.add(n.id); } });
+  return { id: m.id, name: m.name, root: byId[central.id] };
+}
+
 let state = load();
 let view = { tx: 0, ty: 0, s: 1 };
 let selectedId = null;
+
+// transitorios de render (no se guardan)
+let nodeEls = {};        // id -> elemento
+let pos = {};            // id -> { x, y, w, h }  (x,y = esquina superior izquierda)
+let visibleNodes = [];   // nodos visibles en orden
+let parentMap = {};      // id -> nodo padre
 
 // ---------- persistence ----------
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch(e){}
+    const old = localStorage.getItem("mindmaps_v1");
+    if (old) { const s = JSON.parse(old); s.maps = s.maps.map(migrateMap); return s; }
+  } catch (e) {}
   const id = "m_" + uid();
-  const cid = uid();
-  return {
-    activeMapId: id,
-    maps: [{
-      id, name: "Mi primer mapa",
-      nodes: [{ id: cid, x: 500, y: 360, text: "Idea central", note: "", color: 0, central: true }],
-      edges: []
-    }]
-  };
+  return { activeMapId: id, maps: [{ id, name: "Mi primer mapa", root: newNode("Idea central") }] };
 }
 function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
 }
 function activeMap() { return state.maps.find(m => m.id === state.activeMapId) || state.maps[0]; }
+
+function findNode(id) {
+  let res = null;
+  (function walk(n) { if (res) return; if (n.id === id) { res = n; return; } n.children.forEach(walk); })(activeMap().root);
+  return res;
+}
+function parentOf(id) {
+  let res = null;
+  (function walk(n) { if (res) return; for (const c of n.children) { if (c.id === id) { res = n; return; } walk(c); if (res) return; } })(activeMap().root);
+  return res;
+}
 
 // ---------- DOM refs ----------
 const canvas = document.getElementById("canvas");
@@ -250,9 +308,8 @@ const panel = document.getElementById("panel");
 const noteInput = document.getElementById("noteInput");
 const swatches = document.getElementById("swatches");
 const emptyState = document.getElementById("emptyState");
-let nodeEls = {}; // id -> element
 
-// ---------- modal helpers (prompt/confirm replacements) ----------
+// ---------- modal helpers ----------
 const modalBg = document.getElementById("modalBg");
 const modalInput = document.getElementById("modalInput");
 const modalMsg = document.getElementById("modalMsg");
@@ -299,7 +356,7 @@ function screenToWorld(sx, sy) {
   return { x: (sx - r.left - view.tx) / view.s, y: (sy - r.top - view.ty) / view.s };
 }
 
-// ---------- rendering ----------
+// ---------- sidebar ----------
 function renderSidebar() {
   mapList.innerHTML = "";
   state.maps.forEach(m => {
@@ -307,162 +364,137 @@ function renderSidebar() {
     el.className = "map-item" + (m.id === state.activeMapId ? " active" : "");
     el.innerHTML = `<span>🗺</span><span class="name"></span><span class="del" title="Eliminar">✕</span>`;
     el.querySelector(".name").textContent = m.name;
-    el.querySelector(".name").addEventListener("click", () => { switchMap(m.id); });
+    el.querySelector(".name").addEventListener("click", () => switchMap(m.id));
     el.querySelector("span:first-child").addEventListener("click", () => switchMap(m.id));
     el.querySelector(".del").addEventListener("click", (e) => { e.stopPropagation(); deleteMap(m.id); });
-    el.addEventListener("dblclick", (e) => {
-      if (e.target.classList.contains("del")) return;
-      renameMap(m.id);
-    });
+    el.addEventListener("dblclick", (e) => { if (e.target.classList.contains("del")) return; renameMap(m.id); });
     mapList.appendChild(el);
   });
 }
 
+// ---------- render tree ----------
 function renderMap() {
   const map = activeMap();
   document.getElementById("mapTitle").textContent = map.name;
-  // clear nodes
   Object.values(nodeEls).forEach(el => el.remove());
-  nodeEls = {};
-  map.nodes.forEach(createNodeEl);
+  nodeEls = {}; pos = {}; visibleNodes = []; parentMap = {};
+
+  // 1) crear elementos de los nodos visibles
+  (function walk(node, parent) {
+    parentMap[node.id] = parent;
+    visibleNodes.push(node);
+    createNodeEl(node);
+    if (!node.collapsed) node.children.forEach(c => walk(c, node));
+  })(map.root, null);
+
+  // 2) medir tamaños
+  visibleNodes.forEach(n => {
+    const el = nodeEls[n.id];
+    pos[n.id] = { w: el.offsetWidth, h: el.offsetHeight, x: 0, y: 0 };
+  });
+
+  // 3) layout en árbol (izquierda -> derecha)
+  let cursorY = 0;
+  (function layout(node, x) {
+    const ps = pos[node.id];
+    ps.x = x;
+    const kids = node.collapsed ? [] : node.children;
+    if (!kids.length) {
+      ps.y = cursorY;
+      cursorY += ps.h + V_GAP;
+    } else {
+      kids.forEach(c => layout(c, x + ps.w + H_GAP));
+      const f = pos[kids[0].id], l = pos[kids[kids.length - 1].id];
+      ps.y = (f.y + f.h / 2 + l.y + l.h / 2) / 2 - ps.h / 2;
+    }
+  })(map.root, 0);
+
+  // 4) aplicar posiciones
+  visibleNodes.forEach(n => {
+    const el = nodeEls[n.id], ps = pos[n.id];
+    el.style.left = ps.x + "px"; el.style.top = ps.y + "px";
+  });
+
   renderEdges();
-  emptyState.style.display = map.nodes.length === 0 ? "block" : "none";
-  emptyState.textContent = "Pulsa «+ Idea» o doble clic en el lienzo para empezar";
+  emptyState.style.display = "none";
   updatePanel();
 }
 
-function createNodeEl(n) {
-  const c = COLORS[n.color || 0];
+function createNodeEl(node) {
+  const map = activeMap();
+  const c = COLORS[node.color || 0];
   const el = document.createElement("div");
-  el.className = "node" + (n.central ? " central" : "") + (n.id === selectedId ? " selected" : "");
-  el.style.left = n.x + "px";
-  el.style.top = n.y + "px";
-  el.style.borderColor = c.border;
-  el.style.background = c.bg;
-  el.style.color = c.text;
-  el.dataset.id = n.id;
+  el.className = "node" + (node === map.root ? " central" : "") + (node.id === selectedId ? " selected" : "");
+  el.style.borderColor = c.border; el.style.background = c.bg; el.style.color = c.text;
+  el.dataset.id = node.id;
 
   const label = document.createElement("div");
-  label.className = "label";
-  label.textContent = n.text;
+  label.className = "label"; label.textContent = node.text;
   el.appendChild(label);
 
-  if (n.note && n.note.trim()) {
+  if (node.note && node.note.trim()) {
     const nb = document.createElement("div");
     nb.className = "note-badge";
-    nb.textContent = n.note.length > 80 ? n.note.slice(0,80) + "…" : n.note;
+    nb.textContent = node.note.length > 80 ? node.note.slice(0, 80) + "…" : node.note;
     el.appendChild(nb);
   }
 
-  const handle = document.createElement("div");
-  handle.className = "handle";
-  handle.title = "Arrastra para conectar con otra idea";
-  el.appendChild(handle);
+  // toggle plegar/desplegar (sólo si tiene hijos)
+  if (node.children.length) {
+    const t = document.createElement("div");
+    t.className = "toggle"; t.title = node.collapsed ? "Mostrar ramas" : "Ocultar ramas";
+    const sp = document.createElement("span");
+    sp.textContent = node.collapsed ? node.children.length : "–";
+    t.appendChild(sp);
+    t.addEventListener("pointerdown", e => e.stopPropagation());
+    t.addEventListener("click", e => {
+      e.stopPropagation(); node.collapsed = !node.collapsed; save(); renderMap(); selectNode(node.id);
+    });
+    el.appendChild(t);
+  }
 
-  world.appendChild(el);
-  nodeEls[n.id] = el;
+  // botón añadir rama hija
+  const add = document.createElement("div");
+  add.className = "add"; add.textContent = "+"; add.title = "Añadir rama hija";
+  add.addEventListener("pointerdown", e => e.stopPropagation());
+  add.addEventListener("click", e => { e.stopPropagation(); addChild(node); });
+  el.appendChild(add);
 
-  // interactions
-  attachNodeDrag(el, n, label);
-  attachHandle(handle, n);
-  label.addEventListener("dblclick", (e) => { e.stopPropagation(); startEdit(label, n); });
-  el.addEventListener("pointerdown", (e) => { e.stopPropagation(); selectNode(n.id); });
-}
-
-function nodeCenter(n) {
-  const el = nodeEls[n.id];
-  if (!el) return { x: n.x, y: n.y };
-  return { x: n.x + el.offsetWidth / 2, y: n.y + el.offsetHeight / 2 };
-}
-
-function renderEdges() {
-  const map = activeMap();
-  let html = "";
-  map.edges.forEach(e => {
-    const a = map.nodes.find(n => n.id === e.from);
-    const b = map.nodes.find(n => n.id === e.to);
-    if (!a || !b) return;
-    const ca = nodeCenter(a), cb = nodeCenter(b);
-    const col = COLORS[a.color || 0].border;
-    html += `<path d="M ${ca.x} ${ca.y} C ${(ca.x+cb.x)/2} ${ca.y}, ${(ca.x+cb.x)/2} ${cb.y}, ${cb.x} ${cb.y}" stroke="${col}" stroke-width="2.5" fill="none" opacity="0.55"/>`;
-  });
-  edgesSvg.innerHTML = html + (edgesSvg.dataset.temp || "");
-}
-
-// ---------- node dragging ----------
-function attachNodeDrag(el, n, label) {
-  let sx, sy, ox, oy, moved, lastTap = 0;
+  // seleccionar / doble-toque para editar
   el.addEventListener("pointerdown", (e) => {
-    if (e.target.classList.contains("handle")) return;
+    if (e.target.classList.contains("toggle") || e.target.classList.contains("add")) return;
     if (label.getAttribute("contenteditable") === "true") return;
-    if (e.button && e.button !== 0) return;
     e.stopPropagation();
-    // double-tap on touch opens text editing (mouse uses dblclick)
+    selectNode(node.id);
     if (e.pointerType === "touch") {
       const now = Date.now();
-      if (now - lastTap < 320) { lastTap = 0; startEdit(label, n); return; }
-      lastTap = now;
+      if (lastTapId === node.id && now - lastTapTime < 320) { lastTapTime = 0; startEdit(label, node); }
+      else { lastTapId = node.id; lastTapTime = now; }
     }
-    sx = e.clientX; sy = e.clientY; ox = n.x; oy = n.y; moved = false;
-    el.style.cursor = "grabbing";
-    el.setPointerCapture(e.pointerId);
-    const move = (ev) => {
-      const dx = (ev.clientX - sx) / view.s;
-      const dy = (ev.clientY - sy) / view.s;
-      if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
-      n.x = ox + dx; n.y = oy + dy;
-      el.style.left = n.x + "px"; el.style.top = n.y + "px";
-      renderEdges();
-    };
-    const up = () => {
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", up);
-      el.removeEventListener("pointercancel", up);
-      el.style.cursor = "grab";
-      if (moved) save();
-    };
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", up);
-    el.addEventListener("pointercancel", up);
   });
+  label.addEventListener("dblclick", (e) => { e.stopPropagation(); startEdit(label, node); });
+
+  world.appendChild(el);
+  nodeEls[node.id] = el;
+}
+let lastTapId = null, lastTapTime = 0;
+
+function renderEdges() {
+  let html = "";
+  visibleNodes.forEach(n => {
+    const p = parentMap[n.id]; if (!p) return;
+    const a = pos[p.id], b = pos[n.id];
+    const ax = a.x + a.w, ay = a.y + a.h / 2;
+    const bx = b.x, by = b.y + b.h / 2;
+    const mx = (ax + bx) / 2;
+    const col = COLORS[n.color || 0].border;
+    html += `<path d="M ${ax} ${ay} C ${mx} ${ay}, ${mx} ${by}, ${bx} ${by}" stroke="${col}" stroke-width="2.5" fill="none" opacity="0.55"/>`;
+  });
+  edgesSvg.innerHTML = html;
 }
 
-// ---------- connecting nodes ----------
-function attachHandle(handle, n) {
-  handle.addEventListener("pointerdown", (e) => {
-    if (e.button && e.button !== 0) return;
-    e.stopPropagation(); e.preventDefault();
-    handle.setPointerCapture(e.pointerId);
-    const start = nodeCenter(n);
-    const move = (ev) => {
-      const w = screenToWorld(ev.clientX, ev.clientY);
-      edgesSvg.dataset.temp = `<path d="M ${start.x} ${start.y} L ${w.x} ${w.y}" stroke="#1652d6" stroke-width="2.5" stroke-dasharray="6 5" fill="none"/>`;
-      renderEdges();
-    };
-    const up = (ev) => {
-      handle.removeEventListener("pointermove", move);
-      handle.removeEventListener("pointerup", up);
-      handle.removeEventListener("pointercancel", up);
-      edgesSvg.dataset.temp = "";
-      const elAt = document.elementFromPoint(ev.clientX, ev.clientY);
-      const target = elAt && elAt.closest(".node");
-      if (target && target.dataset.id !== n.id) {
-        const map = activeMap();
-        const tid = target.dataset.id;
-        const exists = map.edges.some(ed =>
-          (ed.from === n.id && ed.to === tid) || (ed.from === tid && ed.to === n.id));
-        if (!exists) { map.edges.push({ from: n.id, to: tid }); save(); }
-      }
-      renderEdges();
-    };
-    handle.addEventListener("pointermove", move);
-    handle.addEventListener("pointerup", up);
-    handle.addEventListener("pointercancel", up);
-  });
-}
-
-// ---------- editing text ----------
-function startEdit(label, n) {
+// ---------- editar texto ----------
+function startEdit(label, node) {
   label.setAttribute("contenteditable", "true");
   label.focus();
   const range = document.createRange();
@@ -470,22 +502,21 @@ function startEdit(label, n) {
   const sel = window.getSelection();
   sel.removeAllRanges(); sel.addRange(range);
   const finish = () => {
-    label.removeAttribute("contenteditable");
-    n.text = label.textContent.trim() || "Idea";
-    label.textContent = n.text;
-    save(); renderEdges();
     label.removeEventListener("blur", finish);
     label.removeEventListener("keydown", key);
+    label.removeAttribute("contenteditable");
+    node.text = label.textContent.trim() || "Idea";
+    save(); renderMap(); selectNode(node.id);
   };
   const key = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); label.blur(); }
-    if (e.key === "Escape") { label.textContent = n.text; label.blur(); }
+    if (e.key === "Escape") { label.textContent = node.text; label.blur(); }
   };
   label.addEventListener("blur", finish);
   label.addEventListener("keydown", key);
 }
 
-// ---------- selection / panel ----------
+// ---------- selección / panel ----------
 function selectNode(id) {
   selectedId = id;
   Object.entries(nodeEls).forEach(([nid, el]) => el.classList.toggle("selected", nid === id));
@@ -497,84 +528,75 @@ function deselect() {
   panel.classList.remove("show");
 }
 function updatePanel() {
-  const map = activeMap();
-  const n = map.nodes.find(x => x.id === selectedId);
+  const n = selectedId ? findNode(selectedId) : null;
   if (!n) { panel.classList.remove("show"); return; }
   panel.classList.add("show");
   noteInput.value = n.note || "";
+  const isRoot = !parentOf(n.id);
+  document.getElementById("deleteNode").disabled = isRoot;
+  document.getElementById("addSibBtn").disabled = isRoot;
   swatches.innerHTML = "";
   COLORS.forEach((c, i) => {
     const s = document.createElement("div");
-    s.className = "swatch" + (i === (n.color||0) ? " sel" : "");
-    s.style.background = c.border;
-    s.title = c.name;
-    s.addEventListener("click", () => {
-      n.color = i; save(); renderMap(); selectNode(n.id);
-    });
+    s.className = "swatch" + (i === (n.color || 0) ? " sel" : "");
+    s.style.background = c.border; s.title = c.name;
+    s.addEventListener("click", () => { n.color = i; save(); renderMap(); selectNode(n.id); });
     swatches.appendChild(s);
   });
 }
 noteInput.addEventListener("input", () => {
-  const map = activeMap();
-  const n = map.nodes.find(x => x.id === selectedId);
+  const n = selectedId ? findNode(selectedId) : null;
   if (n) { n.note = noteInput.value; save(); }
 });
 noteInput.addEventListener("blur", () => renderMap());
-document.getElementById("deleteNode").addEventListener("click", () => {
-  const map = activeMap();
-  if (!selectedId) return;
-  map.nodes = map.nodes.filter(n => n.id !== selectedId);
-  map.edges = map.edges.filter(e => e.from !== selectedId && e.to !== selectedId);
-  deselect(); save(); renderMap();
-});
 
-// ---------- add node ----------
-function addNode(wx, wy) {
-  const map = activeMap();
-  const center = screenToWorld(canvas.getBoundingClientRect().left + canvas.clientWidth/2,
-                               canvas.getBoundingClientRect().top + canvas.clientHeight/2);
-  const n = {
-    id: uid(),
-    x: wx != null ? wx : center.x - 50,
-    y: wy != null ? wy : center.y - 20,
-    text: "Nueva idea", note: "", color: (map.nodes.length % COLORS.length)
-  };
-  // auto-connect to selected node, else to central
-  let parent = map.nodes.find(x => x.id === selectedId);
-  if (!parent) parent = map.nodes.find(x => x.central);
-  map.nodes.push(n);
-  if (parent && parent.id !== n.id) map.edges.push({ from: parent.id, to: n.id });
-  save(); renderMap(); selectNode(n.id);
-  // immediately edit
-  setTimeout(() => { const el = nodeEls[n.id]; if (el) startEdit(el.querySelector(".label"), n); }, 30);
+// ---------- crear / borrar ramas ----------
+function addChild(parentNode) {
+  if (!parentNode) parentNode = activeMap().root;
+  const child = newNode("Nueva idea", (parentNode.color + 1) % COLORS.length);
+  parentNode.children.push(child);
+  parentNode.collapsed = false;
+  save(); renderMap(); selectNode(child.id); centerOn(child.id);
+  setTimeout(() => { const el = nodeEls[child.id]; if (el) startEdit(el.querySelector(".label"), child); }, 30);
 }
-document.getElementById("addNode").addEventListener("click", () => addNode());
+function addSibling(node) {
+  const parent = parentOf(node.id);
+  if (!parent) { addChild(node); return; } // la raíz no tiene hermana -> crea hija
+  const sib = newNode("Nueva idea", node.color);
+  const idx = parent.children.indexOf(node);
+  parent.children.splice(idx + 1, 0, sib);
+  save(); renderMap(); selectNode(sib.id); centerOn(sib.id);
+  setTimeout(() => { const el = nodeEls[sib.id]; if (el) startEdit(el.querySelector(".label"), sib); }, 30);
+}
+function deleteSelected() {
+  if (!selectedId) return;
+  const node = findNode(selectedId);
+  const parent = parentOf(selectedId);
+  if (!parent) { showHint("No puedes eliminar la idea raíz"); return; }
+  parent.children = parent.children.filter(c => c.id !== node.id);
+  deselect(); save(); renderMap();
+}
+document.getElementById("addNode").addEventListener("click", () => addChild(selectedId ? findNode(selectedId) : null));
+document.getElementById("addChildBtn").addEventListener("click", () => { if (selectedId) addChild(findNode(selectedId)); });
+document.getElementById("addSibBtn").addEventListener("click", () => { if (selectedId) addSibling(findNode(selectedId)); });
+document.getElementById("deleteNode").addEventListener("click", deleteSelected);
 
-// ---------- radial arrange ----------
-document.getElementById("arrange").addEventListener("click", () => {
-  const map = activeMap();
-  const central = map.nodes.find(n => n.central) || map.nodes[0];
-  if (!central) return;
-  const children = map.nodes.filter(n => n.id !== central.id);
-  const R = Math.max(220, children.length * 28);
-  central.x = 500; central.y = 360;
-  children.forEach((n, i) => {
-    const ang = (i / children.length) * Math.PI * 2 - Math.PI/2;
-    n.x = 500 + Math.cos(ang) * R;
-    n.y = 360 + Math.sin(ang) * R;
-  });
-  save(); renderMap();
-  view = { tx: canvas.clientWidth/2 - 500, ty: canvas.clientHeight/2 - 360, s: 0.85 };
-  applyView();
-  showHint("Ideas ordenadas radialmente");
-});
+// ---------- plegar / desplegar todo ----------
+function setCollapsedAll(val, keepRoot) {
+  const root = activeMap().root;
+  (function walk(n) {
+    if (n.children.length && !(keepRoot && n === root)) n.collapsed = val;
+    n.children.forEach(walk);
+  })(root);
+  save(); renderMap(); centerView();
+}
+document.getElementById("collapseAll").addEventListener("click", () => setCollapsedAll(true, true));
+document.getElementById("expandAll").addEventListener("click", () => setCollapsedAll(false, false));
 
 // ---------- maps management ----------
 function switchMap(id) {
   state.activeMapId = id; selectedId = null; save();
-  view = { tx: 0, ty: 0, s: 1 };
-  renderSidebar(); applyView(); renderMap();
-  centerView();
+  renderSidebar(); renderMap(); centerView();
 }
 async function deleteMap(id) {
   if (state.maps.length === 1) { showHint("Debe quedar al menos un mapa"); return; }
@@ -582,7 +604,7 @@ async function deleteMap(id) {
   if (!ok) return;
   state.maps = state.maps.filter(m => m.id !== id);
   if (state.activeMapId === id) state.activeMapId = state.maps[0].id;
-  save(); renderSidebar(); renderMap();
+  save(); renderSidebar(); renderMap(); centerView();
 }
 async function renameMap(id) {
   const m = state.maps.find(x => x.id === id);
@@ -593,32 +615,25 @@ document.getElementById("newMapBtn").addEventListener("click", async () => {
   const name = await askText("Nuevo mapa", "Mapa " + (state.maps.length + 1));
   if (name === null) return;
   const id = "m_" + uid();
-  state.maps.push({
-    id, name: (name && name.trim()) || ("Mapa " + (state.maps.length + 1)),
-    nodes: [{ id: uid(), x: 500, y: 360, text: "Idea central", note: "", color: 0, central: true }],
-    edges: []
-  });
+  state.maps.push({ id, name: (name && name.trim()) || ("Mapa " + (state.maps.length + 1)), root: newNode("Idea central") });
   switchMap(id);
 });
 
-// ---------- pan, pinch-zoom & double-tap (mouse + touch) ----------
-const activePointers = new Map(); // pointerId -> {x,y}
-let panStart = null, pinch = null;
-let downInfo = null, lastCanvasTap = 0;
-
+// ---------- pan, pinch-zoom & doble-toque (ratón + táctil) ----------
+const activePointers = new Map();
+let panStart = null, pinch = null, downInfo = null, lastCanvasTap = 0;
 function pinchMid() {
   const pts = [...activePointers.values()];
   const r = canvas.getBoundingClientRect();
   return { x: (pts[0].x + pts[1].x) / 2 - r.left, y: (pts[0].y + pts[1].y) / 2 - r.top,
            dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) };
 }
-
 canvas.addEventListener("pointerdown", (e) => {
   if (e.target.closest(".node") || e.target.closest("#panel") || e.target.closest("#zoomctl")) return;
   if (e.button && e.button !== 0) return;
   activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (activePointers.size === 1) {
-    downInfo = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false, type: e.pointerType };
+    downInfo = { x: e.clientX, y: e.clientY, moved: false, type: e.pointerType };
     panStart = { x: e.clientX - view.tx, y: e.clientY - view.ty };
     canvas.classList.add("panning");
   } else if (activePointers.size === 2) {
@@ -632,7 +647,7 @@ document.addEventListener("pointermove", (e) => {
   activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pinch && activePointers.size >= 2) {
     const m = pinchMid();
-    let s = Math.min(2.5, Math.max(0.25, pinch.s * (m.dist / pinch.dist)));
+    let s = Math.min(2.5, Math.max(0.2, pinch.s * (m.dist / pinch.dist)));
     view.s = s; view.tx = m.x - pinch.wx * s; view.ty = m.y - pinch.wy * s; applyView();
   } else if (panStart) {
     if (downInfo && (Math.abs(e.clientX - downInfo.x) + Math.abs(e.clientY - downInfo.y) > 4)) downInfo.moved = true;
@@ -645,17 +660,7 @@ function endCanvasPointer(e) {
   if (activePointers.size < 2) pinch = null;
   if (activePointers.size === 0) {
     panStart = null; canvas.classList.remove("panning");
-    // tap (no real drag): on touch a quick double-tap adds a new idea
-    if (downInfo && !downInfo.moved) {
-      if (downInfo.type !== "mouse") {
-        const now = Date.now();
-        if (now - lastCanvasTap < 320) {
-          lastCanvasTap = 0;
-          const w = screenToWorld(e.clientX, e.clientY);
-          addNode(w.x - 50, w.y - 20);
-        } else { lastCanvasTap = now; deselect(); }
-      } else { deselect(); }
-    }
+    if (downInfo && !downInfo.moved) deselect();
     downInfo = null;
   } else if (activePointers.size === 1) {
     const p = [...activePointers.values()][0];
@@ -664,56 +669,71 @@ function endCanvasPointer(e) {
 }
 document.addEventListener("pointerup", endCanvasPointer);
 document.addEventListener("pointercancel", endCanvasPointer);
-// desktop: double-click on empty canvas adds an idea
-canvas.addEventListener("dblclick", (e) => {
-  if (e.target.closest(".node")) return;
-  const w = screenToWorld(e.clientX, e.clientY);
-  addNode(w.x - 50, w.y - 20);
-});
 canvas.addEventListener("wheel", (e) => {
   e.preventDefault();
   const r = canvas.getBoundingClientRect();
   const mx = e.clientX - r.left, my = e.clientY - r.top;
   const wx = (mx - view.tx) / view.s, wy = (my - view.ty) / view.s;
   const factor = e.deltaY < 0 ? 1.12 : 0.89;
-  view.s = Math.min(2.5, Math.max(0.25, view.s * factor));
+  view.s = Math.min(2.5, Math.max(0.2, view.s * factor));
   view.tx = mx - wx * view.s; view.ty = my - wy * view.s;
   applyView();
 }, { passive: false });
 
 function zoomBy(f) {
-  const mx = canvas.clientWidth/2, my = canvas.clientHeight/2;
+  const mx = canvas.clientWidth / 2, my = canvas.clientHeight / 2;
   const wx = (mx - view.tx) / view.s, wy = (my - view.ty) / view.s;
-  view.s = Math.min(2.5, Math.max(0.25, view.s * f));
+  view.s = Math.min(2.5, Math.max(0.2, view.s * f));
   view.tx = mx - wx * view.s; view.ty = my - wy * view.s; applyView();
 }
 document.getElementById("zoomIn").addEventListener("click", () => zoomBy(1.15));
 document.getElementById("zoomOut").addEventListener("click", () => zoomBy(0.87));
 document.getElementById("zoomReset").addEventListener("click", () => centerView());
 
+function bounds() {
+  let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+  visibleNodes.forEach(n => {
+    const p = pos[n.id]; if (!p) return;
+    minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x + p.w); maxY = Math.max(maxY, p.y + p.h);
+  });
+  if (minX === 1e9) return null;
+  return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
+}
 function centerView() {
-  const map = activeMap();
-  if (!map.nodes.length) { view = { tx:0, ty:0, s:1 }; applyView(); return; }
-  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
-  map.nodes.forEach(n => { minX=Math.min(minX,n.x); minY=Math.min(minY,n.y);
-    maxX=Math.max(maxX,n.x+180); maxY=Math.max(maxY,n.y+60); });
-  const w = maxX-minX, h = maxY-minY;
-  const s = Math.min(1.2, Math.min(canvas.clientWidth/(w+160), canvas.clientHeight/(h+160)));
-  view.s = Math.max(0.3, s);
-  view.tx = (canvas.clientWidth - w*view.s)/2 - minX*view.s;
-  view.ty = (canvas.clientHeight - h*view.s)/2 - minY*view.s;
+  const b = bounds();
+  if (!b) { view = { tx: 0, ty: 0, s: 1 }; applyView(); return; }
+  const s = Math.min(1.1, Math.min(canvas.clientWidth / (b.w + 140), canvas.clientHeight / (b.h + 140)));
+  view.s = Math.max(0.2, s);
+  view.tx = (canvas.clientWidth - b.w * view.s) / 2 - b.minX * view.s;
+  view.ty = (canvas.clientHeight - b.h * view.s) / 2 - b.minY * view.s;
+  applyView();
+}
+// asegura que un nodo concreto quede a la vista (sin cambiar zoom)
+function centerOn(id) {
+  const p = pos[id]; if (!p) return;
+  const cx = (p.x + p.w / 2) * view.s + view.tx;
+  const cy = (p.y + p.h / 2) * view.s + view.ty;
+  const margin = 80;
+  if (cx < margin) view.tx += (margin - cx);
+  if (cx > canvas.clientWidth - margin) view.tx -= (cx - (canvas.clientWidth - margin));
+  if (cy < margin) view.ty += (margin - cy);
+  if (cy > canvas.clientHeight - margin) view.ty -= (cy - (canvas.clientHeight - margin));
   applyView();
 }
 
-// ---------- keyboard ----------
+// ---------- teclado ----------
 document.addEventListener("keydown", (e) => {
   const editing = document.activeElement &&
-    (document.activeElement.tagName === "TEXTAREA" || document.activeElement.getAttribute("contenteditable") === "true");
+    (document.activeElement.tagName === "TEXTAREA" || document.activeElement.tagName === "INPUT" ||
+     document.activeElement.getAttribute("contenteditable") === "true");
   if (editing) return;
-  if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
-    e.preventDefault(); document.getElementById("deleteNode").click();
-  }
-  if (e.key === "Tab" && selectedId) { e.preventDefault(); addNode(); }
+  if (!selectedId) return;
+  const node = findNode(selectedId);
+  if (!node) return;
+  if (e.key === "Tab") { e.preventDefault(); addChild(node); }
+  else if (e.key === "Enter") { e.preventDefault(); addSibling(node); }
+  else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSelected(); }
 });
 
 // ---------- hint ----------
@@ -722,74 +742,65 @@ function showHint(text) {
   const h = document.getElementById("hint");
   h.textContent = text; h.classList.add("show");
   clearTimeout(hintTimer);
-  hintTimer = setTimeout(() => h.classList.remove("show"), 2200);
+  hintTimer = setTimeout(() => h.classList.remove("show"), 3000);
 }
 
 // ---------- export PNG ----------
 document.getElementById("exportPng").addEventListener("click", () => {
-  const map = activeMap();
-  if (!map.nodes.length) return;
-  // measure
+  const b = bounds(); if (!b) return;
   const pad = 60;
-  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
-  const sizes = {};
-  map.nodes.forEach(n => {
-    const el = nodeEls[n.id];
-    const w = el ? el.offsetWidth : 120, h = el ? el.offsetHeight : 50;
-    sizes[n.id] = { w, h };
-    minX=Math.min(minX,n.x); minY=Math.min(minY,n.y);
-    maxX=Math.max(maxX,n.x+w); maxY=Math.max(maxY,n.y+h);
-  });
-  const W = (maxX-minX)+pad*2, H = (maxY-minY)+pad*2;
-  const scale = 2;
+  const W = b.w + pad * 2, H = b.h + pad * 2, scale = 2;
   const cv = document.createElement("canvas");
-  cv.width = W*scale; cv.height = H*scale;
+  cv.width = W * scale; cv.height = H * scale;
   const ctx = cv.getContext("2d");
   ctx.scale(scale, scale);
-  ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,W,H);
-  const off = (n) => ({ x: n.x - minX + pad, y: n.y - minY + pad });
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  const ox = (v) => v - b.minX + pad, oy = (v) => v - b.minY + pad;
   // edges
-  map.edges.forEach(e => {
-    const a = map.nodes.find(n=>n.id===e.from), b = map.nodes.find(n=>n.id===e.to);
-    if (!a||!b) return;
-    const oa=off(a), ob=off(b), sa=sizes[a.id], sb=sizes[b.id];
-    const ax=oa.x+sa.w/2, ay=oa.y+sa.h/2, bx=ob.x+sb.w/2, by=ob.y+sb.h/2;
-    ctx.strokeStyle = COLORS[a.color||0].border; ctx.globalAlpha=0.5; ctx.lineWidth=2.5;
-    ctx.beginPath(); ctx.moveTo(ax,ay);
-    ctx.bezierCurveTo((ax+bx)/2,ay,(ax+bx)/2,by,bx,by); ctx.stroke();
-    ctx.globalAlpha=1;
+  visibleNodes.forEach(n => {
+    const p = parentMap[n.id]; if (!p) return;
+    const a = pos[p.id], c = pos[n.id];
+    const ax = ox(a.x + a.w), ay = oy(a.y + a.h / 2), bx = ox(c.x), by = oy(c.y + c.h / 2), mx = (ax + bx) / 2;
+    ctx.strokeStyle = COLORS[n.color || 0].border; ctx.globalAlpha = 0.5; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.bezierCurveTo(mx, ay, mx, by, bx, by); ctx.stroke();
+    ctx.globalAlpha = 1;
   });
   // nodes
-  map.nodes.forEach(n => {
-    const o=off(n), s=sizes[n.id], c=COLORS[n.color||0];
-    roundRect(ctx,o.x,o.y,s.w,s.h,12);
-    ctx.fillStyle=c.bg; ctx.fill();
-    ctx.strokeStyle=c.border; ctx.lineWidth=2; ctx.stroke();
-    ctx.fillStyle=c.text;
-    ctx.font=(n.central?"bold 15px ":"13px ")+"-apple-system,Segoe UI,Roboto,sans-serif";
-    ctx.textBaseline="top";
-    wrapText(ctx, n.text, o.x+14, o.y+12, s.w-28, 18);
+  const map = activeMap();
+  visibleNodes.forEach(n => {
+    const p = pos[n.id], c = COLORS[n.color || 0];
+    roundRect(ctx, ox(p.x), oy(p.y), p.w, p.h, 12);
+    ctx.fillStyle = c.bg; ctx.fill();
+    ctx.strokeStyle = c.border; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = c.text;
+    ctx.font = (n === map.root ? "bold 15px " : "13px ") + "-apple-system,Segoe UI,Roboto,sans-serif";
+    ctx.textBaseline = "top";
+    wrapText(ctx, n.text, ox(p.x) + 14, oy(p.y) + 11, p.w - 28, 18);
   });
-  const a=document.createElement("a");
-  a.download=(map.name||"mapa")+".png"; a.href=cv.toDataURL("image/png"); a.click();
+  const a = document.createElement("a");
+  a.download = (map.name || "mapa") + ".png"; a.href = cv.toDataURL("image/png"); a.click();
   showHint("PNG exportado");
 });
-function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
-function wrapText(ctx,text,x,y,maxW,lh){
-  const words=text.split(/\s+/); let line="", yy=y;
-  words.forEach(w=>{ const t=line?line+" "+w:w;
-    if(ctx.measureText(t).width>maxW && line){ ctx.fillText(line,x,yy); line=w; yy+=lh; }
-    else line=t; });
-  if(line) ctx.fillText(line,x,yy);
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function wrapText(ctx, text, x, y, maxW, lh) {
+  const words = text.split(/\s+/); let line = "", yy = y;
+  words.forEach(w => {
+    const t = line ? line + " " + w : w;
+    if (ctx.measureText(t).width > maxW && line) { ctx.fillText(line, x, yy); line = w; yy += lh; }
+    else line = t;
+  });
+  if (line) ctx.fillText(line, x, yy);
 }
 
 // ---------- export / import JSON ----------
 document.getElementById("exportJson").addEventListener("click", () => {
   const map = activeMap();
-  const blob = new Blob([JSON.stringify(map,null,2)], { type:"application/json" });
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download=(map.name||"mapa")+".json"; a.click();
+  const blob = new Blob([JSON.stringify(map, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = (map.name || "mapa") + ".json"; a.click();
   showHint("JSON exportado");
 });
 document.getElementById("importJson").addEventListener("click", () => document.getElementById("fileInput").click());
@@ -799,11 +810,13 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   reader.onload = () => {
     try {
       const data = JSON.parse(reader.result);
-      if (!data.nodes) throw new Error();
       const id = "m_" + uid();
-      state.maps.push({ id, name: (data.name||"Importado"), nodes: data.nodes, edges: data.edges||[] });
-      switchMap(id); showHint("Mapa importado");
-    } catch(err){ showHint("Archivo no válido"); }
+      let map;
+      if (data.root) map = { id, name: data.name || "Importado", root: data.root };
+      else if (data.nodes) map = migrateMap({ id, name: data.name || "Importado", nodes: data.nodes, edges: data.edges });
+      else throw new Error();
+      state.maps.push(map); switchMap(id); showHint("Mapa importado");
+    } catch (err) { showHint("Archivo no válido"); }
   };
   reader.readAsText(f);
   e.target.value = "";
@@ -811,10 +824,9 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
 
 // ---------- init ----------
 renderSidebar();
-applyView();
 renderMap();
 centerView();
-showHint("Doble clic en el lienzo = nueva idea · Arrastra el punto azul para conectar");
+showHint("Selecciona una idea y pulsa el «+» o Tab para crear una rama hija · Enter = hermana · doble clic para editar");
 </script>
 </body>
 </html>
